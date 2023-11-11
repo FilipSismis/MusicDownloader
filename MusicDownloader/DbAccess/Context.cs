@@ -11,7 +11,12 @@ namespace MusicDownloader.DbAccess
         {
             //change later can't use hardcoded path
 #if DEBUG
-            DbPath = Directory.GetParent(Environment.CurrentDirectory).FullName + @"\playlist.db";
+            var path = Directory.GetParent(Environment.CurrentDirectory);
+            if (path != null)
+                DbPath = path.FullName + @"\playlist.db";
+            else
+                DbPath = Environment.CurrentDirectory + @"\playlist.db";
+
 #else
             //something for publish
 #endif

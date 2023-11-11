@@ -1,5 +1,6 @@
 ﻿using Google.Apis.Services;
 using Google.Apis.YouTube.v3;
+using log4net;
 using MusicDownloader.DbAccess;
 using System.Diagnostics;
 using VideoLibrary;
@@ -8,33 +9,49 @@ namespace MusicDownloader
 {
     public sealed class DownloadMusicService : BackgroundService
     {
-        private PlaylistRepository repo;
-        private string musicDir;
-        private string downloadDir;
-        private Client<YouTubeVideo> ytClient;
-        private VideoClient dlClient;
+        private PlaylistRepository? repo;
+        private string? musicDir;
+        private string? downloadDir;
+        private Client<YouTubeVideo>? ytClient;
+        private VideoClient? dlClient;
         private const string ytUrl = "https://www.youtube.com/watch?v=";
+        private static readonly ILog log = LogManager.GetLogger(typeof(Program));
         public override Task StartAsync(CancellationToken cancellationToken)
         {
             ytClient = Client.For(new YouTube());
             dlClient = new();
             repo = new();
-#if DEBUG
+            
             var dir = Directory.GetParent(Environment.CurrentDirectory);
-            downloadDir = dir.FullName + @"\download";
-            if (!dir.Parent.GetDirectories().Select(i => i.Name).Contains("Music"))
-                Directory.CreateDirectory(dir.Parent.FullName + @"\Music");
-            musicDir = dir.Parent + @"\Music";
-#else
-            musicDir = //nieco pre publish 
-#endif            
+            if (dir != null)
+                downloadDir = dir.FullName + @"\download";
+            else
+            {
+                log.Error($"Folder {Environment.CurrentDirectory} is a root folder, can't get a parent");
+                return Task.CompletedTask;
+            }
+
+            var parentDir = dir.Parent;
+            if (parentDir != null)
+            {
+                if (!parentDir.GetDirectories().Select(i => i.Name).Contains("Music"))
+                    Directory.CreateDirectory(parentDir.FullName + @"\Music");
+                musicDir = dir.Parent + @"\Music";
+            }
+            else
+            {
+                log.Error($"Folder {dir} is a root folder, can't get a parent");
+                return Task.CompletedTask;
+            }
+            log.Info("Starting the Service with initialized directories");
             return base.StartAsync(cancellationToken);
         }
 
         public override Task StopAsync(CancellationToken cancellationToken)
         {
-            ytClient.Dispose();
-            dlClient.Dispose();
+            ytClient?.Dispose();
+            dlClient?.Dispose();
+            log.Info("Stopping the service");
             return base.StopAsync(cancellationToken);
         }
 

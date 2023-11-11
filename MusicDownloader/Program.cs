@@ -1,4 +1,5 @@
 using MusicDownloader;
+[assembly: log4net.Config.XmlConfigurator(ConfigFile = "log4net.config", Watch = true)]
 
 IHost host = Host.CreateDefaultBuilder(args)
     .ConfigureServices(services =>
