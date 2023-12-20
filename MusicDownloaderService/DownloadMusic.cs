@@ -1,81 +1,81 @@
 ﻿using Google.Apis.Services;
 using Google.Apis.YouTube.v3;
-using log4net;
-using MusicDownloader.DbAccess;
+using MusicDownloaderService.DBAccess;
+using MusicDownloaderService.Model.Interface;
 using System.Diagnostics;
 using VideoLibrary;
 
-namespace MusicDownloader
+namespace MusicDownloaderService
 {
-    public sealed class DownloadMusicService : BackgroundService
+    public class DownloadMusic : IDownloadMusic
     {
-        private PlaylistRepository? repo;
-        private string? musicDir;
-        private string? downloadDir;
-        private Client<YouTubeVideo>? ytClient;
-        private VideoClient? dlClient;
+        private PlaylistRepository repo;
+        private string musicDir;
+        private string downloadDir;
+        private Client<YouTubeVideo> ytClient;
+        private VideoClient dlClient;
+        private readonly IServiceAccountLogin serviceAccountLogin;
+        private readonly ILogger<MusicDownloaderService> logger;
         private const string ytUrl = "https://www.youtube.com/watch?v=";
-        private static readonly ILog log = LogManager.GetLogger(typeof(Program));
-        public override Task StartAsync(CancellationToken cancellationToken)
+        public DownloadMusic(ILogger<MusicDownloaderService> logger, IConfiguration config, IServiceAccountLogin serviceAccountLogin)
         {
+            this.logger = logger;
+            this.serviceAccountLogin = serviceAccountLogin;
+
             ytClient = Client.For(new YouTube());
             dlClient = new();
-            repo = new();
-            
+
+            var connectionString = config.GetConnectionString("sqliteDbPath");
+            if (string.IsNullOrEmpty(connectionString))
+                throw new Exception("There is empty or none connection string in appsettings file");
+            repo = new(connectionString);
+
+            logger.LogInformation($"Service is in {Environment.CurrentDirectory}");
             var dir = Directory.GetParent(Environment.CurrentDirectory);
             if (dir != null)
                 downloadDir = dir.FullName + @"\download";
             else
+                throw new Exception($"Folder {Environment.CurrentDirectory} is a root folder, can't get a parent");
+
+            if (!dir.GetDirectories().Select(i => i.Name).Contains("Music"))
             {
-                log.Error($"Folder {Environment.CurrentDirectory} is a root folder, can't get a parent");
-                return Task.CompletedTask;
+                logger.LogInformation("There is no Music dir, creating new one");
+                Directory.CreateDirectory(dir.FullName + @"\Music");
             }
 
-            var parentDir = dir.Parent;
-            if (parentDir != null)
-            {
-                if (!parentDir.GetDirectories().Select(i => i.Name).Contains("Music"))
-                    Directory.CreateDirectory(parentDir.FullName + @"\Music");
-                musicDir = dir.Parent + @"\Music";
-            }
-            else
-            {
-                log.Error($"Folder {dir} is a root folder, can't get a parent");
-                return Task.CompletedTask;
-            }
-            log.Info("Starting the Service with initialized directories");
-            return base.StartAsync(cancellationToken);
+            musicDir = dir.FullName + @"\Music";
         }
 
-        public override Task StopAsync(CancellationToken cancellationToken)
-        {
-            ytClient?.Dispose();
-            dlClient?.Dispose();
-            log.Info("Stopping the service");
-            return base.StopAsync(cancellationToken);
-        }
-
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        public async Task DownloadAsync()
         {
             var playlists = await repo.GetAllAsync();
+            logger.LogInformation($"{playlists.Count} playlists have been retrieved from db");
             foreach (var playlist in playlists)
             {
                 //retrieve playlist name if it's null in db
                 if (string.IsNullOrEmpty(playlist.Name))
                 {
+                    logger.LogInformation("This playlist doesn't have a name in DB, retrieving from API...");
                     playlist.Name = await GetPlaylistName(playlist.Url);
                     repo.Update(playlist);
                 }
 
+                logger.LogInformation($"Retriving videos of {playlist.Name}");
                 var videoIds = await GetVideosAsync(playlist.Url);
 
                 //playlist is up to date so we just continue
                 if (videoIds[0] == playlist.LastSongId)
+                {
+                    logger.LogInformation($"Playlist {playlist.Name} is up to date continuing to next one");
                     continue;
+                }
 
                 var dirList = Directory.GetDirectories(musicDir).Select(i => new DirectoryInfo(i).Name);
                 if (!dirList.Contains(playlist.Name))
+                {
+                    logger.LogInformation($"Playlist {playlist.Name} doesn't have a folder creating");
                     Directory.CreateDirectory($@"{musicDir}\{playlist.Name}");
+                }
 
                 var playlistDir = musicDir + $@"\{playlist.Name}";
 
@@ -83,22 +83,32 @@ namespace MusicDownloader
                 {
                     if (vidId != playlist.LastSongId)
                     {
+                        logger.LogInformation($"Downloading {vidId}...");
                         var vids = ytClient.GetAllVideosAsync(ytUrl + vidId).GetAwaiter().GetResult();
                         var vid = vids.OrderByDescending(i => i.AudioBitrate).First();
                         if (vid != null)
                         {
                             File.WriteAllBytes($@"{downloadDir}\{vid.FullName}", dlClient.GetBytes(vid));
+                            logger.LogInformation("Video has been downloaded, starting the conversion");
                             ConvertVideo($@"{downloadDir}\{vid.FullName}", $@"{playlistDir}\{vid.FullName}.mp3");
+                            logger.LogInformation("Video has been converted");
                         }
                     }
                     else
                         break;
                 }
-
+                logger.LogInformation($"Playlist {playlist.Name} is up to date, starting clean up");
                 CleanUp();
                 playlist.LastSongId = videoIds[0];
                 repo.Update(playlist);
             }
+            logger.LogInformation("All playlists are up to date");
+        }
+
+        public void ClientDispose()
+        {
+            ytClient.Dispose();
+            dlClient.Dispose();
         }
 
         private async Task<List<string>> GetVideosAsync(string playlistId)
@@ -151,15 +161,22 @@ namespace MusicDownloader
         {
             string command = $"/C ffmpeg -i \"{oldFile}\" -ar 44100 -ac 2 -b:a 128k \"{newFile}\"";
             Process cmd = new();
-            cmd.StartInfo.UseShellExecute = false;
-            cmd.StartInfo.FileName = "cmd.exe";
-            cmd.StartInfo.Arguments = command;
-            cmd.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+            ProcessStartInfo proccessInfo = new()
+            {
+                UserName = serviceAccountLogin.Username,
+                Domain = "",
+                Password = serviceAccountLogin.Password,
+                UseShellExecute = false,
+                FileName = "cmd.exe",
+                Arguments = command,
+                WindowStyle = ProcessWindowStyle.Hidden,
+            };
+            cmd.StartInfo = proccessInfo;
             cmd.Start();
             cmd.WaitForExit();
         }
 
-        private void CleanUp()
+        public void CleanUp()
         {
             var fileList = new DirectoryInfo(downloadDir).GetFiles();
             foreach (var file in fileList)

@@ -1,13 +1,14 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using MusicDownloaderService.Model.Entity;
 
-namespace MusicDownloader.DbAccess
+namespace MusicDownloaderService.DBAccess
 {
     public class PlaylistRepository
     {
         private Context context;
-        public PlaylistRepository()
+        public PlaylistRepository(string connectionString)
         {
-            context = new Context();
+            context = new Context(connectionString);
         }
 
         public async Task<List<Playlist>> GetAllAsync() => await context.Playlists.ToListAsync();
@@ -15,7 +16,7 @@ namespace MusicDownloader.DbAccess
         public async void Update(Playlist playlist)
         {
             var oldPlaylist = await context.Playlists.FirstOrDefaultAsync(i => i.Id == playlist.Id);
-            if(oldPlaylist != null)
+            if (oldPlaylist != null)
             {
                 oldPlaylist.Name = playlist.Name;
                 oldPlaylist.Url = playlist.Url;

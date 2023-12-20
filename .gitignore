@@ -397,3 +397,16 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# ignore appsettings file
+appsettings.json
+
+#ignore testing folders 
+Music/
+download/
+
+# ignore log file
+MD_Log.txt
+
+# ignore db file
+playlist.db
