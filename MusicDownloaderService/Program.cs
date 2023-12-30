@@ -22,7 +22,7 @@ IHost host = Host.CreateDefaultBuilder(args)
     .UseWindowsService()
     .ConfigureServices(services =>
     {
-        services.AddSingleton<IServiceAccountLogin, ServiceAccountLogin>();
+        services.AddSingleton<IServiceAccountLogin, ServiceConfig>();
         services.AddSingleton<IDownloadMusic, DownloadMusic>();
         services.AddHostedService<MusicDownloaderService.MusicDownloaderService>();
     }).UseSerilog()

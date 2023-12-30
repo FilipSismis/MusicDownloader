@@ -400,6 +400,7 @@ FodyWeavers.xsd
 
 # ignore appsettings file
 appsettings.json
+appsettings.Development.json
 
 #ignore testing folders 
 Music/
