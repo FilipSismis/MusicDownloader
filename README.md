@@ -5,7 +5,21 @@ Windows service written in c# to locally download and keep track of downloaded s
 - build a db from a migration with ef core tools
 - store your own youtube API key inside of environment variable called API_KEY
 - for converting the music the service uses ffmpeg which can be downloaded from: [ffmpeg download](https://www.gyan.dev/ffmpeg/builds/)
-- before running the service for now, you have to manually put IDs of your youtube playlists inside of the sqlite DB located in build folder
 
-## Plans for future: 
-- make a small GUI app to update the playlist IDs without having to temper with the DB itself
+## Config file structure i.e. appsettigs.json
+```
+{
+  "Logging": {
+    "LogPath": "path\\to\\log_file.txt",
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.Hosting.Lifetime": "Information"
+    }
+  },
+  "ServiceConfig": {
+    "DbPath": "path\\to\\sqlite.db
+    "MusicDirpath": "music\\directory\\path\\",
+    "Username": "usernameForAccountRunningffmpeg",
+    "Password": "passwordForAccountRunningffmpeg"
+  }
+}
