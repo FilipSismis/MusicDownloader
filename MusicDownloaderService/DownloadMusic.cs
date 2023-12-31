@@ -14,36 +14,29 @@ namespace MusicDownloaderService
         private string downloadDir;
         private Client<YouTubeVideo> ytClient;
         private VideoClient dlClient;
-        private readonly IServiceAccountLogin serviceAccountLogin;
+        private readonly IServiceConfig serviceConfig;
         private readonly ILogger<MusicDownloaderService> logger;
         private const string ytUrl = "https://www.youtube.com/watch?v=";
-        public DownloadMusic(ILogger<MusicDownloaderService> logger, IConfiguration config, IServiceAccountLogin serviceAccountLogin)
+        public DownloadMusic(ILogger<MusicDownloaderService> logger, IServiceConfig serviceConfig)
         {
             this.logger = logger;
-            this.serviceAccountLogin = serviceAccountLogin;
+            this.serviceConfig = serviceConfig;
 
             ytClient = Client.For(new YouTube());
             dlClient = new();
 
-            var connectionString = config.GetConnectionString("sqliteDbPath");
-            if (string.IsNullOrEmpty(connectionString))
-                throw new Exception("There is empty or none connection string in appsettings file");
-            repo = new(connectionString);
+            repo = new(this.serviceConfig.DbPath);
 
             logger.LogInformation($"Service is in {Environment.CurrentDirectory}");
-            var dir = Directory.GetParent(Environment.CurrentDirectory);
-            if (dir != null)
-                downloadDir = dir.FullName + @"\download";
-            else
-                throw new Exception($"Folder {Environment.CurrentDirectory} is a root folder, can't get a parent");
 
-            if (!dir.GetDirectories().Select(i => i.Name).Contains("Music"))
+            if (!Directory.Exists(this.serviceConfig.MusicDirPath))
             {
-                logger.LogInformation("There is no Music dir, creating new one");
-                Directory.CreateDirectory(dir.FullName + @"\Music");
+                logger.LogInformation($"There is no directory: {this.serviceConfig.MusicDirPath} as specified in config, trying to create it...");
+                Directory.CreateDirectory(this.serviceConfig.MusicDirPath);
             }
 
-            musicDir = dir.FullName + @"\Music";
+            musicDir = this.serviceConfig.MusicDirPath;
+            downloadDir = Directory.CreateDirectory($"{this.serviceConfig.MusicDirPath}download").FullName;
         }
 
         public async Task DownloadAsync()
@@ -81,21 +74,17 @@ namespace MusicDownloaderService
 
                 foreach (var vidId in videoIds)
                 {
-                    if (vidId != playlist.LastSongId)
-                    {
-                        logger.LogInformation($"Downloading {vidId}...");
-                        var vids = ytClient.GetAllVideosAsync(ytUrl + vidId).GetAwaiter().GetResult();
-                        var vid = vids.OrderByDescending(i => i.AudioBitrate).First();
-                        if (vid != null)
-                        {
-                            File.WriteAllBytes($@"{downloadDir}\{vid.FullName}", dlClient.GetBytes(vid));
-                            logger.LogInformation("Video has been downloaded, starting the conversion");
-                            ConvertVideo($@"{downloadDir}\{vid.FullName}", $@"{playlistDir}\{vid.FullName}.mp3");
-                            logger.LogInformation("Video has been converted");
-                        }
-                    }
-                    else
+                    if (vidId == playlist.LastSongId)
                         break;
+                    try
+                    {
+                        DownloadVideo(vidId, playlistDir);
+                    }
+                    catch (Exception e)
+                    {
+                        logger.LogError($"Could not download video because: {e.Message}");
+                        continue;
+                    }
                 }
                 logger.LogInformation($"Playlist {playlist.Name} is up to date, starting clean up");
                 CleanUp();
@@ -157,15 +146,29 @@ namespace MusicDownloaderService
             return response.Items.First().Snippet.Title;
         }
 
+        private void DownloadVideo(string videoid, string playlistDir)
+        {
+            logger.LogInformation($"Downloading {videoid}...");
+            var vids = ytClient.GetAllVideosAsync(ytUrl + videoid).GetAwaiter().GetResult();
+            var vid = vids.OrderByDescending(i => i.AudioBitrate).First();
+            if (vid != null)
+            {
+                File.WriteAllBytes($@"{downloadDir}\{vid.FullName}", dlClient.GetBytes(vid));
+                logger.LogInformation("Video has been downloaded, starting the conversion");
+                ConvertVideo($@"{downloadDir}\{vid.FullName}", $@"{playlistDir}\{vid.FullName}.mp3");
+                logger.LogInformation("Video has been converted");
+            }
+        }
+
         private void ConvertVideo(string oldFile, string newFile)
         {
             string command = $"/C ffmpeg -i \"{oldFile}\" -ar 44100 -ac 2 -b:a 128k \"{newFile}\"";
             Process cmd = new();
             ProcessStartInfo proccessInfo = new()
             {
-                UserName = serviceAccountLogin.Username,
+                UserName = serviceConfig.Username,
                 Domain = "",
-                Password = serviceAccountLogin.Password,
+                Password = serviceConfig.Password,
                 UseShellExecute = false,
                 FileName = "cmd.exe",
                 Arguments = command,
