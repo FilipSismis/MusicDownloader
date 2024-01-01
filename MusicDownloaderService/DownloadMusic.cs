@@ -109,7 +109,7 @@ namespace MusicDownloaderService
             List<string> result = new List<string>();
             var youtubeService = new YouTubeService(new BaseClientService.Initializer()
             {
-                ApiKey = Environment.GetEnvironmentVariable("API_KEY"),
+                ApiKey = serviceConfig.APIKey,
                 ApplicationName = "AutoPlaylistUpdate"
             });
 
@@ -138,7 +138,7 @@ namespace MusicDownloaderService
         {
             var youtubeService = new YouTubeService(new BaseClientService.Initializer()
             {
-                ApiKey = Environment.GetEnvironmentVariable("API_KEY"),
+                ApiKey = serviceConfig.APIKey,
                 ApplicationName = "AutoPlaylistUpdate"
             });
 

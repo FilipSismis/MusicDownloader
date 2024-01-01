@@ -3,7 +3,6 @@ Windows service written in c# to locally download and keep track of downloaded s
 
 ## To run the service:
 - build a db from a migration with ef core tools
-- store your own youtube API key inside of environment variable called API_KEY
 - for converting the music the service uses ffmpeg which can be downloaded from: [ffmpeg download](https://www.gyan.dev/ffmpeg/builds/)
 
 ## Config file structure i.e. appsettigs.json
@@ -17,7 +16,8 @@ Windows service written in c# to locally download and keep track of downloaded s
     }
   },
   "ServiceConfig": {
-    "DbPath": "path\\to\\sqlite.db
-    "MusicDirpath": "music\\directory\\path\\"
+    "APIKey" : "api_key_to_youtube_api"
+    "DbPath" : "path\\to\\sqlite.db
+    "MusicDirpath" : "music\\directory\\path\\"
   }
 }

@@ -4,5 +4,6 @@
     {
         string MusicDirPath { get; set; }
         string DbPath { get; set; }
+        string APIKey { get; set; }
     }
 }
