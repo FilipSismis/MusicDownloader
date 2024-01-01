@@ -170,9 +170,6 @@ namespace MusicDownloaderService
             Process cmd = new();
             ProcessStartInfo proccessInfo = new()
             {
-                //UserName = serviceConfig.Username,
-                //Domain = "",
-                //Password = serviceConfig.Password,
                 UseShellExecute = false,
                 FileName = "cmd.exe",
                 Arguments = command,

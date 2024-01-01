@@ -18,8 +18,6 @@ Windows service written in c# to locally download and keep track of downloaded s
   },
   "ServiceConfig": {
     "DbPath": "path\\to\\sqlite.db
-    "MusicDirpath": "music\\directory\\path\\",
-    "Username": "usernameForAccountRunningffmpeg",
-    "Password": "passwordForAccountRunningffmpeg"
+    "MusicDirpath": "music\\directory\\path\\"
   }
 }
