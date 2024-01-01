@@ -36,7 +36,11 @@ namespace MusicDownloaderService
             }
 
             musicDir = this.serviceConfig.MusicDirPath;
-            downloadDir = Directory.CreateDirectory($"{this.serviceConfig.MusicDirPath}download").FullName;
+            var parentDir = Directory.GetParent(this.serviceConfig.MusicDirPath);
+            if (parentDir == null)
+                downloadDir = Directory.CreateDirectory($"{parentDir}download").FullName;
+            else
+                downloadDir = Directory.CreateDirectory($"{parentDir.FullName}download").FullName;
         }
 
         public async Task DownloadAsync()

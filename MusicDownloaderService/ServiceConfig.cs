@@ -12,12 +12,12 @@ namespace MusicDownloaderService
         
         public ServiceConfig(IConfiguration config)
         {
-            var userName = config.GetSection("ServiceAccountCredentials:Username").Value;
+            var userName = config.GetSection("ServiceConfig:Username").Value;
             if (string.IsNullOrEmpty(userName))
                 throw new Exception("Username for service account is either empty or none in appsettings file");
             Username = userName;
 
-            var password = config.GetSection("ServiceAccountCredentials:Password").Value;
+            var password = config.GetSection("ServiceConfig:Password").Value;
             if (string.IsNullOrEmpty(password))
                 throw new Exception("Password for service account is either empty or none in appsettings file");
             Password = new();
