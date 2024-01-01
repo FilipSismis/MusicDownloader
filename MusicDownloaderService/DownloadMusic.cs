@@ -36,11 +36,11 @@ namespace MusicDownloaderService
             }
 
             musicDir = this.serviceConfig.MusicDirPath;
-            var parentDir = Directory.GetParent(this.serviceConfig.MusicDirPath);
+            var parentDir = Directory.GetParent(this.serviceConfig.MusicDirPath.Substring(0, this.serviceConfig.MusicDirPath.Length - 2));
             if (parentDir == null)
                 downloadDir = Directory.CreateDirectory($"{parentDir}download").FullName;
             else
-                downloadDir = Directory.CreateDirectory($"{parentDir.FullName}download").FullName;
+                downloadDir = Directory.CreateDirectory($"{parentDir.FullName}\\download").FullName;
         }
 
         public async Task DownloadAsync()
@@ -170,9 +170,9 @@ namespace MusicDownloaderService
             Process cmd = new();
             ProcessStartInfo proccessInfo = new()
             {
-                UserName = serviceConfig.Username,
-                Domain = "",
-                Password = serviceConfig.Password,
+                //UserName = serviceConfig.Username,
+                //Domain = "",
+                //Password = serviceConfig.Password,
                 UseShellExecute = false,
                 FileName = "cmd.exe",
                 Arguments = command,
