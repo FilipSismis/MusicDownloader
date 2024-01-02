@@ -16,6 +16,8 @@ Windows service written in c# to locally download and keep track of downloaded s
     }
   },
   "ServiceConfig": {
+    "Username" : "usernameForFfmpegProccess",
+    "Password" : "passwordForFfmpegProccess",
     "APIKey" : "api_key_to_youtube_api"
     "DbPath" : "path\\to\\sqlite.db
     "MusicDirpath" : "music\\directory\\path\\"
